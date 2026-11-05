@@ -68,6 +68,10 @@ def add_page():
 # Part 4 ============================================================
 # 1. Reading Multiple Books
 def process_books(*paths):
+    global page_number
+    # Start clean so a second build in one session doesn't append to the first.
+    pages.clear()
+    page_number = 0
     for path in paths:
         read_book( path )
 
@@ -96,18 +100,12 @@ def save(file_path, book):
 
 
 def load(file_path, *key_books, reverse=False):
-    if os.path.exists(file_path):
-        with open(file_path, 'r') as fp:
-            return json.load(fp)
-    else:
+    if not os.path.exists(file_path):
         process_books(*key_books)
-        if reverse:
-            save(file_path, pages)
-            return pages
-        else:
-            code_book = generate_code_book()
-            save(file_path, code_book)
-            return code_book
+        save(file_path, pages if reverse else generate_code_book())
+    # Always read from disk: JSON turns int keys into strings, and decrypt expects strings.
+    with open(file_path, 'r') as fp:
+        return json.load(fp)
 
 # Part 6 ============================================================
 # 1. Encrypting a Message
@@ -146,22 +144,22 @@ def main():
     while True:
         try:
             choice = main_menu()
-            match choice:
-                case 1:
-                    code_book = load(code_book_path, *key_books)
-                    message = input("Please enter your secret message: ")
-                    print(encrypt(code_book, message))
-                    continue
-                case 2:
-                    rev_code_book = load(rev_code_book_path, *key_books, reverse=True)
-                    message = input("Please enter your cipher text: ")
-                    print(decrypt(rev_code_book, message))
-                    continue
-                case 3:
-                    sys.exit(0)
         except ValueError:
-            print("Improper selection.")
-
+            print(f"Improper selection.")
+            continue
+        match choice:
+            case 1:
+                code_book = load(code_book_path, *key_books)
+                message = input("Please enter your secret message: ")
+                print(encrypt(code_book, message))
+                continue
+            case 2:
+                rev_code_book = load(rev_code_book_path, *key_books, reverse=True)
+                message = input("Please enter your cipher text: ")
+                print(decrypt(rev_code_book, message))
+                continue
+            case 3:
+                sys.exit(0)
 
 if __name__ == '__main__':
     main()
